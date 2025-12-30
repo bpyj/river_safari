@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>River Safari Adventure!</title>
+
+  <style>
+    /* --- Base Theme --- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      height: 100svh;
+      background: #fdfae6;
+      font-family: 'Comic Sans MS', 'Chalkboard SE', cursive, sans-serif;
+      color: #2d4a22;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      max-width: 500px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      padding: 10px;
+    }
+
+    /* --- Safari UI Elements --- */
+    .header {
+      width: min(92vmin, 400px);
+      background: #86efac;
+      border: 4px solid #4ade80;
+      border-radius: 20px;
+      padding: 12px;
+      text-align: center;
+      box-shadow: 0 4px 0 #166534;
+    }
+
+    .title {
+      font-weight: 900;
+      font-size: 20px;
+      margin-bottom: 4px;
+      color: #064e3b;
+    }
+
+    /* --- NEW: button + timer row --- */
+    .topActions {
+      margin-top: 6px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .timerBadge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #fef08a;
+      border: 2px solid #ca8a04;
+      color: #92400e;
+      font-weight: 900;
+      font-size: 13px;
+      border-bottom: 3px solid #a16207;
+      user-select: none;
+    }
+
+    /* --- Game Grid --- */
+    .grid {
+      width: min(90vmin, 380px);
+      aspect-ratio: 1 / 1;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      gap: 3px;
+      background: #a3e635;
+      padding: 6px;
+      border-radius: 12px;
+      border: 6px solid #713f12;
+    }
+
+    .cell {
+      background: #bef264;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      transition: background 0.3s;
+    }
+
+    .river { background: #38bdf8; box-shadow: inset 0 0 8px #0ea5e9; }
+    .start { background: #fbbf24; }
+    .end { background: #f87171; }
+
+    .boat {
+      font-size: 28px;
+      z-index: 10;
+      filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+      animation: sway 2s ease-in-out infinite;
+    }
+
+    @keyframes sway {
+      0%, 100% { transform: rotate(-5deg) scale(1.2); }
+      50% { transform: rotate(5deg) scale(1.2); }
+    }
+
+    /* --- Animals/POIs --- */
+    .poi::after { content: "🔭"; font-size: 16px; }
+    .poi-active {
+      background: #fef08a !important;
+      border: 2px solid #ca8a04;
+      cursor: pointer;
+      animation: bounce 0.6s infinite alternate;
+    }
+    .poi-visited::after { content: "📸"; }
+    .poi-visited { background: #dcfce7 !important; opacity: 0.8; }
+
+    @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+
+    /* --- Controls & Log --- */
+    .controlsWrap { width: min(92vmin, 400px); display: grid; gap: 8px; }
+    .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .controls button {
+      padding: 10px 4px;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 12px;
+      border: none;
+      background: #713f12;
+      color: #fff;
+      border-bottom: 4px solid #45230d;
+      cursor: pointer;
+    }
+    .controls button:active { transform: translateY(2px); border-bottom: 2px solid #45230d; }
+
+    .log {
+      background: #fff;
+      border: 3px solid #713f12;
+      border-radius: 12px;
+      padding: 8px 12px;
+      height: 70px;
+      overflow-y: auto;
+      font-size: 14px;
+      color: #3f6212;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* --- Modal & Camera --- */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+    .overlay.show { display: flex; }
+
+    .modal {
+      width: min(90vw, 360px);
+      background: #fff;
+      border-radius: 25px;
+      padding: 20px;
+      border: 6px solid #fbbf24;
+      text-align: center;
+    }
+
+    .cameraBtn {
+      background: #0ea5e9;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 900;
+      cursor: pointer;
+      border-bottom: 4px solid #0369a1;
+      margin: 10px 0;
+    }
+
+    .photoWrap {
+      border-radius: 18px;
+      overflow: hidden;
+      background: #000;
+      border: 4px dashed #fbbf24;
+      margin-bottom: 10px;
+    }
+
+    .photoWrap img {
+      width: 100%;
+      height: 180px;
+      display: block;
+      object-fit: cover;
+    }
+
+    .newMapBtn {
+      padding: 6px 14px;
+      font-size: 13px;
+      font-weight: bold;
+      border-radius: 999px;
+      border: none;
+      background: #22c55e;
+      color: #064e3b;
+      cursor: pointer;
+      border-bottom: 3px solid #15803d;
+    }
+
+    .newMapBtn:active {
+      transform: translateY(2px);
+      border-bottom: 1px solid #15803d;
+    }
+
+    /* Flash Effect */
+    .flash { animation: cameraFlash 0.4s ease-out; }
+    @keyframes cameraFlash { 0% { filter: brightness(3); } 100% { filter: brightness(1); } }
+
+    .hidden { display: none; }
+    .closeBtn { background: #22c55e; color: white; padding: 12px 25px; border-radius: 50px; border:none; cursor: pointer; font-weight: bold; }
+
+    @media (max-height: 600px) {
+      .grid { width: 55vmin; }
+      .photoWrap img { height: 120px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">🦁 River Safari Adventure! 🛶</div>
+      <p>Move <b>North, South, East, West</b> to find animals!</p>
+
+      <!-- NEW: button + timer beside it -->
+      <div class="topActions">
+        <button id="newMapBtn" class="newMapBtn">🔄 New Map</button>
+        <div class="timerBadge" aria-label="Timer">
+          ⏱️ <span id="timer">00:00</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="grid" class="grid"></div>
+
+    <div class="controlsWrap">
+      <div class="controls">
+        <button id="btnN">North ⬆️</button>
+        <button id="btnS">South ⬇️</button>
+        <button id="btnE">East ➡️</button>
+        <button id="btnW">West ⬅️</button>
+      </div>
+      <div id="log" class="log"></div>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay">
+    <div class="modal">
+      <h2 id="modalTitle" class="modalTitle">Found an Animal!</h2>
+      <div id="sceneIcon" style="font-size: 50px; margin: 10px;">🐾</div>
+
+      <button id="cameraBtn" class="cameraBtn">📷 Take Photo!</button>
+
+      <div id="photoWrap" class="photoWrap hidden">
+        <img id="animalPhoto" src="" alt="Animal photo" />
+      </div>
+
+      <div id="facts" class="facts"></div>
+      <button id="closeOverlay" class="closeBtn">Keep Exploring! 🛶</button>
+    </div>
+  </div>
+
+  <script>
+    /* --- Configuration & Data --- */
+    const COLS = 8, ROWS = 8;
+    const DEFAULT_PHOTO = "https://i.postimg.cc/W1S6Qhq8/IMG-8120.png";
+    const ANIMALS = [
+      { name: "Happy Capybara", icon: "🐹", photo: "https://i.postimg.cc/NFJbRF8N/IMG-8122.png", facts: ["They love to swim!", "Friendly with everyone."] },
+      { name: "Spotty Jaguar", icon: "🐆", photo: "https://i.postimg.cc/SNr6HJws/IMG-8116.png", facts: ["Amazing swimmers.", "Great night vision."] },
+      { name: "Giant Anteater", icon: "🐜", photo: "https://i.postimg.cc/fRLJRKRP/IMG-8123.png", facts: ["Tongues longer than a ruler!", "Eat 30k ants a day."] },
+      { name: "Pink Flamingo", icon: "🦩", photo: "https://i.postimg.cc/kGBgXYT2/IMG_8121.png", facts: ["Pink from eating shrimp!", "Sleep on one leg."] },
+      { name: "Friendly Tapir", icon: "🦛", photo: "https://i.postimg.cc/2548XBt3/IMG-8119.png", facts: ["Noses like snorkels!", "Related to horses."] }
+    ];
+
+    /* --- State --- */
+    let riverPath = [], riverSet = new Set(), poiMap = new Map();
+    let boatPos = { r: 0, c: 0 }, endPos = { r: 0, c: 0 };
+    const cells = [];
+
+    const key = (r, c) => `${r},${c}`;
+    const inBounds = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS;
+
+    /* --- NEW: Timer state --- */
+    let timerStartMs = Date.now();
+    let timerInterval = null;
+
+    function formatTime(ms) {
+      const totalSeconds = Math.floor(ms / 1000);
+      const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const ss = String(totalSeconds % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    function startTimer() {
+      timerStartMs = Date.now();
+      const timerEl = document.getElementById("timer");
+      if (timerInterval) clearInterval(timerInterval);
+
+      // update immediately
+      timerEl.textContent = "00:00";
+
+      timerInterval = setInterval(() => {
+        timerEl.textContent = formatTime(Date.now() - timerStartMs);
+      }, 1000);
+    }
+
+    function pauseTimer() {
+      if (!timerInterval) return;
+      clearInterval(timerInterval);
+      timerInterval = null;
+    }
+
+    function resumeTimer() {
+      if (timerInterval) return;
+      const alreadyElapsed = Date.now() - timerStartMs;
+      timerStartMs = Date.now() - alreadyElapsed;
+
+      timerInterval = setInterval(() => {
+        document.getElementById("timer").textContent =
+          formatTime(Date.now() - timerStartMs);
+      }, 1000);
+    }
+
+
+    /* --- Generation Logic --- */
+    function generateRiver() {
+      for (let i = 0; i < 500; i++) {
+        let r = 0, c = Math.floor(Math.random() * COLS);
+        const path = [[r, c]], visited = new Set([key(r, c)]);
+        while (r < ROWS - 1) {
+          const dirs = [[1,0],[0,1],[0,-1]].sort(() => Math.random() - 0.5);
+          let moved = false;
+          for (let [dr, dc] of dirs) {
+            let nr = r + dr, nc = c + dc;
+            if (inBounds(nr, nc) && !visited.has(key(nr, nc))) {
+              r = nr; c = nc; path.push([r, c]); visited.add(key(r, c));
+              moved = true; break;
+            }
+          }
+          if (!moved) break;
+        }
+        if (r === ROWS - 1) return path;
+      }
+      return [[0,0],[1,0],[2,0],[3,0],[4,0],[5,0],[6,0],[7,0]];
+    }
+
+    function placePOIs() {
+      const map = new Map();
+      const shuffled = [...ANIMALS].sort(() => 0.5 - Math.random());
+      let count = 0;
+      riverPath.slice(1, -1).forEach(([r, c]) => {
+        if (Math.random() > 0.7 && count < 4) {
+          const adj = [[r-1,c],[r+1,c],[r,c-1],[r,c+1]].find(([nr, nc]) =>
+            inBounds(nr, nc) && !riverSet.has(key(nr, nc)) && !map.has(key(nr, nc))
+          );
+          if (adj) {
+            map.set(key(adj[0], adj[1]), { animal: shuffled[count++], visited: false });
+          }
+        }
+      });
+      return map;
+    }
+
+    /* --- Rendering --- */
+    function render() {
+      cells.forEach(c => { c.className = "cell"; c.innerHTML = ""; });
+
+      riverPath.forEach(([r, c], i) => {
+        const cell = cells[r * COLS + c];
+        cell.classList.add("river");
+        if (i === 0) cell.textContent = "🛖";
+        if (i === riverPath.length - 1) cell.textContent = "🏁";
+      });
+
+      poiMap.forEach((info, k) => {
+        const [r, c] = k.split(",").map(Number);
+        const cell = cells[r * COLS + c];
+        cell.classList.add("poi");
+        if (info.visited) cell.classList.add("poi-visited");
+        const dist = Math.abs(boatPos.r - r) + Math.abs(boatPos.c - c);
+        if (dist === 1 && !info.visited) cell.classList.add("poi-active");
+      });
+
+      const boatCell = cells[boatPos.r * COLS + boatPos.c];
+      boatCell.innerHTML = `<span class="boat">🛶</span>`;
+    }
+
+    /* --- Interaction --- */
+    function log(msg) {
+      const p = document.createElement("p");
+      p.innerHTML = `✨ ${msg}`;
+      const logEl = document.getElementById("log");
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight; // keep newest visible at bottom
+    }
+
+    function move(dr, dc) {
+      const nr = boatPos.r + dr, nc = boatPos.c + dc;
+      if (!inBounds(nr, nc)) return log("Stay on the map!");
+      if (!riverSet.has(key(nr, nc))) return log("Boats stay in the water!");
+      boatPos = { r: nr, c: nc };
+      render();
+      if (nr === endPos.r && nc === endPos.c) log("Reached the Camp! 🏁");
+    }
+
+    document.getElementById("grid").onclick = (e) => {
+      const cell = e.target.closest(".poi-active");
+      if (!cell) return;
+      const k = key(cell.dataset.r, cell.dataset.c);
+      const info = poiMap.get(k);
+      info.visited = true;
+      render();
+
+      document.getElementById("modalTitle").textContent = `Found: ${info.animal.name}!`;
+      document.getElementById("animalPhoto").src = info.animal.photo || DEFAULT_PHOTO;
+      document.getElementById("facts").innerHTML = `<ul>${info.animal.facts.map(f => `<li>${f}</li>`).join("")}</ul>`;
+
+      document.getElementById("photoWrap").classList.add("hidden");
+      document.getElementById("cameraBtn").classList.remove("hidden");
+      pauseTimer();
+      document.getElementById("overlay").classList.add("show");
+
+    };
+
+    document.getElementById("cameraBtn").onclick = function() {
+      this.classList.add("hidden");
+      const wrap = document.getElementById("photoWrap");
+      wrap.classList.remove("hidden");
+      wrap.classList.add("flash");
+      setTimeout(() => wrap.classList.remove("flash"), 400);
+    };
+
+    /* --- Init --- */
+    function resetMap() {
+      riverPath = generateRiver();
+      riverSet = new Set(riverPath.map(p => key(p[0], p[1])));
+      boatPos = { r: riverPath[0][0], c: riverPath[0][1] };
+      endPos = { r: riverPath[riverPath.length-1][0], c: riverPath[riverPath.length-1][1] };
+      poiMap = placePOIs();
+
+      document.getElementById("log").innerHTML = "";
+      render();
+      log("New Safari Map! 🗺️");
+
+      // NEW: reset timer too
+      startTimer();
+    }
+
+    document.getElementById("newMapBtn").onclick = resetMap;
+
+    const gridEl = document.getElementById("grid");
+    for (let i = 0; i < ROWS * COLS; i++) {
+      const d = document.createElement("div");
+      d.dataset.r = Math.floor(i / COLS);
+      d.dataset.c = i % COLS;
+      gridEl.appendChild(d);
+      cells.push(d);
+    }
+
+    riverPath = generateRiver();
+    riverSet = new Set(riverPath.map(p => key(p[0], p[1])));
+    boatPos = { r: riverPath[0][0], c: riverPath[0][1] };
+    endPos = { r: riverPath[riverPath.length-1][0], c: riverPath[riverPath.length-1][1] };
+    poiMap = placePOIs();
+
+    document.getElementById("btnN").onclick = () => move(-1, 0);
+    document.getElementById("btnS").onclick = () => move(1, 0);
+    document.getElementById("btnE").onclick = () => move(0, 1);
+    document.getElementById("btnW").onclick = () => move(0, -1);
+    document.getElementById("closeOverlay").onclick = () => {
+      document.getElementById("overlay").classList.remove("show");
+      resumeTimer();
+    };
+
+
+    render();
+    log("Safari Start! 🛶");
+
+    // NEW: start timer on load
+    startTimer();
+  </script>
+</body>
+</html>
