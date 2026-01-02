@@ -50,31 +50,6 @@
       color: #064e3b;
     }
 
-    /* --- NEW: button + timer row --- */
-    .topActions {
-      margin-top: 6px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .timerBadge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      border-radius: 999px;
-      background: #fef08a;
-      border: 2px solid #ca8a04;
-      color: #92400e;
-      font-weight: 900;
-      font-size: 13px;
-      border-bottom: 3px solid #a16207;
-      user-select: none;
-    }
-
     /* --- Game Grid --- */
     .grid {
       width: min(90vmin, 380px);
@@ -215,10 +190,31 @@
       cursor: pointer;
       border-bottom: 3px solid #15803d;
     }
-
     .newMapBtn:active {
       transform: translateY(2px);
       border-bottom: 1px solid #15803d;
+    }
+
+    /* NEW: button row with timer */
+    .headerRow {
+      margin-top: 8px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .timerPill {
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #ffffff;
+      border: 2px solid #166534;
+      box-shadow: 0 2px 0 #166534;
+      font-weight: 900;
+      font-size: 13px;
+      color: #064e3b;
+      min-width: 120px;
+      text-align: center;
     }
 
     /* Flash Effect */
@@ -241,12 +237,10 @@
       <div class="title">🦁 River Safari Adventure! 🛶</div>
       <p>Move <b>North, South, East, West</b> to find animals!</p>
 
-      <!-- NEW: button + timer beside it -->
-      <div class="topActions">
+      <!-- NEW: row with New Map + Timer -->
+      <div class="headerRow">
         <button id="newMapBtn" class="newMapBtn">🔄 New Map</button>
-        <div class="timerBadge" aria-label="Timer">
-          ⏱️ <span id="timer">00:00</span>
-        </div>
+        <div id="timer" class="timerPill">⏱️ 0s</div>
       </div>
     </div>
 
@@ -299,47 +293,39 @@
     const key = (r, c) => `${r},${c}`;
     const inBounds = (r, c) => r >= 0 && r < ROWS && c >= 0 && c < COLS;
 
-    /* --- NEW: Timer state --- */
-    let timerStartMs = Date.now();
-    let timerInterval = null;
+    /* --- Timer (pauses while modal open, no hidden accumulation) --- */
+    let elapsedSeconds = 0;
+    let timerPaused = false;
+    let timerIntervalId = null;
 
-    function formatTime(ms) {
-      const totalSeconds = Math.floor(ms / 1000);
-      const mm = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-      const ss = String(totalSeconds % 60).padStart(2, "0");
-      return `${mm}:${ss}`;
+    function updateTimerUI() {
+      document.getElementById("timer").textContent = `⏱️ ${elapsedSeconds}s`;
     }
 
     function startTimer() {
-      timerStartMs = Date.now();
-      const timerEl = document.getElementById("timer");
-      if (timerInterval) clearInterval(timerInterval);
-
-      // update immediately
-      timerEl.textContent = "00:00";
-
-      timerInterval = setInterval(() => {
-        timerEl.textContent = formatTime(Date.now() - timerStartMs);
+      stopTimer(); // ensure only one interval
+      timerIntervalId = setInterval(() => {
+        if (!timerPaused) {
+          elapsedSeconds += 1;
+          updateTimerUI();
+        }
       }, 1000);
     }
 
-    function pauseTimer() {
-      if (!timerInterval) return;
-      clearInterval(timerInterval);
-      timerInterval = null;
+    function stopTimer() {
+      if (timerIntervalId) {
+        clearInterval(timerIntervalId);
+        timerIntervalId = null;
+      }
     }
 
-    function resumeTimer() {
-      if (timerInterval) return;
-      const alreadyElapsed = Date.now() - timerStartMs;
-      timerStartMs = Date.now() - alreadyElapsed;
+    function pauseTimer() { timerPaused = true; }
+    function resumeTimer() { timerPaused = false; }
 
-      timerInterval = setInterval(() => {
-        document.getElementById("timer").textContent =
-          formatTime(Date.now() - timerStartMs);
-      }, 1000);
+    function resetTimer() {
+      elapsedSeconds = 0;
+      updateTimerUI();
     }
-
 
     /* --- Generation Logic --- */
     function generateRiver() {
@@ -410,7 +396,7 @@
       p.innerHTML = `✨ ${msg}`;
       const logEl = document.getElementById("log");
       logEl.appendChild(p);
-      logEl.scrollTop = logEl.scrollHeight; // keep newest visible at bottom
+      logEl.scrollTop = logEl.scrollHeight; // keep newest visible
     }
 
     function move(dr, dc) {
@@ -436,9 +422,10 @@
 
       document.getElementById("photoWrap").classList.add("hidden");
       document.getElementById("cameraBtn").classList.remove("hidden");
+
+      // ✅ pause timer when modal opens
       pauseTimer();
       document.getElementById("overlay").classList.add("show");
-
     };
 
     document.getElementById("cameraBtn").onclick = function() {
@@ -461,8 +448,9 @@
       render();
       log("New Safari Map! 🗺️");
 
-      // NEW: reset timer too
-      startTimer();
+      // ✅ reset + restart timer for new run
+      resetTimer();
+      resumeTimer();
     }
 
     document.getElementById("newMapBtn").onclick = resetMap;
@@ -486,16 +474,18 @@
     document.getElementById("btnS").onclick = () => move(1, 0);
     document.getElementById("btnE").onclick = () => move(0, 1);
     document.getElementById("btnW").onclick = () => move(0, -1);
+
     document.getElementById("closeOverlay").onclick = () => {
       document.getElementById("overlay").classList.remove("show");
+      // ✅ resume timer when modal closes
       resumeTimer();
     };
-
 
     render();
     log("Safari Start! 🛶");
 
-    // NEW: start timer on load
+    // ✅ start timer on load
+    updateTimerUI();
     startTimer();
   </script>
 </body>
